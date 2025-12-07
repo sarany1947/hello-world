@@ -32,3 +32,29 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: Update Deployment Tag in Apps Repo
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only run on push to main
+        env:
+          GH_TOKEN: ${{ secrets.CR_PAT }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          git config --global user.email "ci-bot@example.com"
+          git config --global user.name "CI Bot"
+
+          # Clone the apps repo
+          git clone https://x-access-token:${GH_TOKEN}@github.com/${REPO_OWNER}/apps.git
+          cd apps
+
+          # Update the tag in helmimage/values.yaml
+          sed -i 's/  tag: ".*"/  tag: "${{ github.sha }}"/' helmimage/values.yaml
+
+          # Commit and Push
+          git add helmimage/values.yaml
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Deploy: Update image tag to ${{ github.sha }}"
+            git push origin main
+          fi
